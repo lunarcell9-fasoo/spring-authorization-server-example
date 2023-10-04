@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.lunarcell.authorizationServer.mapper.UserMapper">
+
+	<select id="getWithRoles" parameterType="string" resultMap="userResultMap">
+		SELECT u.*, ur.role_id
+		FROM 
+			fs_user u
+			LEFT OUTER JOIN fs_user_role ur ON u.user_id = ur.user_id
+		WHERE u.user_id = #{userId}
+	</select>
+
+	<resultMap id="userResultMap" type="UserWithRoles" autoMapping="true">
+		<id column="user_id" property="userId" />
+		<collection property="roleNames" ofType="String">
+			<result column="role_id" />
+		</collection>
+	</resultMap>
+
+</mapper>

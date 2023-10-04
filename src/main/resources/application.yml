@@ -1,0 +1,63 @@
+server:
+  port: 9000
+
+logging:
+  level:
+    org.springframework.security: trace
+
+spring:
+  datasource:
+    driverClassName: org.mariadb.jdbc.Driver
+    url: jdbc:mariadb://localhost:3306/auth_server
+    username: root
+    password: password
+
+# spring:
+#   security:
+#     user:
+#       name: fasoo
+#       password: 1111
+#     oauth2:
+#       authorizationserver:
+#         client:
+#           fasoo-client:
+#             registration:
+#               client-id: "fasoo-client"
+#               client-secret: "{noop}secret"
+#               client-authentication-methods:
+#                 - "client_secret_basic"
+#               authorization-grant-types:
+#                 - "authorization_code"
+#                 - "refresh_token"
+#               redirect-uris:
+#                 - "http://127.0.0.1:8080/login/oauth2/code/fasoo-client"
+#                 - "https://oauth.pstmn.io/v1/callback"
+#               post-logout-redirect-uris:
+#                 - "http://127.0.0.1:8080/"
+#               scopes:
+#                 - "openid"
+#                 - "profile"
+#                 - "user.read"
+#                 - "user.write"
+#             require-authorization-consent: true
+      # client:
+      #   registration:
+      #     fasoo-client-oidc:
+      #       provider: spring
+      #       client-id: fasoo-client
+      #       client-secret: secret
+      #       authorization-grant-type: authorization_code
+      #       redirect-uri: "http://127.0.0.1:9000/login/oauth2/code/{registrationId}"
+      #       scope: openid, profile
+      #       client-name: fasoo-client-oidc
+      #     fasoo-client-authorization-code:
+      #       provider: spring
+      #       client-id: fasoo-oidc-client
+      #       client-secret: secret
+      #       authorization-grant-type: authorization_code
+      #       redirect-uri: "http://127.0.0.1:9000/authorized"
+      #       scope: user.read, user.write
+      #       client-name: fasoo-client-authorization-code          
+      #   provider:
+      #     spring:
+      #       issuer-uri: http://localhost:9000
