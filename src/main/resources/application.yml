@@ -5,6 +5,10 @@ logging:
   level:
     org.springframework.security: trace
 
+keystore:
+  path: ./conf/auth-server.pfx
+  pass: password
+
 spring:
   datasource:
     driverClassName: org.mariadb.jdbc.Driver

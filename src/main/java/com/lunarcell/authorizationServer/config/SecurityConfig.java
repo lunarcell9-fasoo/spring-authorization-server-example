@@ -1,7 +1,15 @@
 package com.lunarcell.authorizationServer.config;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.cert.CertificateException;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.time.Duration;
@@ -10,6 +18,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -47,6 +56,7 @@ import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
 
 import com.lunarcell.authorizationServer.authentication.FsUserDetailsService;
 import com.nimbusds.jose.jwk.JWKSet;
+import com.nimbusds.jose.jwk.PasswordLookup;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
@@ -133,6 +143,7 @@ public class SecurityConfig {
 				.clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
 				.authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
 				.authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+				.authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
 				.redirectUri("http://127.0.0.1:8080/login/oauth2/code/fasoo-client")
 				.redirectUri("https://oauth.pstmn.io/v1/callback")
 				.postLogoutRedirectUri("http://127.0.0.1:8080/")
@@ -164,16 +175,33 @@ public class SecurityConfig {
 	}
 
 	@Bean
-	public JWKSource<SecurityContext> jwkSource() {
-		KeyPair keyPair = generateRsaKey();
-		RSAPublicKey publicKey = (RSAPublicKey) keyPair.getPublic();
-		RSAPrivateKey privateKey = (RSAPrivateKey) keyPair.getPrivate();
-		RSAKey rsaKey = new RSAKey.Builder(publicKey)
-				.privateKey(privateKey)
-				.keyID(UUID.randomUUID().toString())
-				.build();
-		JWKSet jwkSet = new JWKSet(rsaKey);
-		return new ImmutableJWKSet<>(jwkSet);
+	public JWKSource<SecurityContext> jwkSource(@Value("${keystore.path}") String path, @Value("${keystore.pass}") String password) throws KeyStoreException, FileNotFoundException, IOException, NoSuchAlgorithmException, CertificateException {
+		File ksFile = new File(path);
+		if (ksFile.exists()) {
+			KeyStore keyStore = KeyStore.getInstance("pkcs12");
+			try (FileInputStream fis = new FileInputStream(ksFile)) {
+				keyStore.load(fis, password.toCharArray());
+			}
+
+			JWKSet jwkSet = JWKSet.load(keyStore, new PasswordLookup() {
+				@Override
+				public char[] lookupPassword(String name) {
+					return password.toCharArray();
+				}
+			});
+
+			return (jwkSelector, securityContext) -> jwkSelector.select(jwkSet);
+		} else {
+			KeyPair keyPair = generateRsaKey();
+			RSAPublicKey publicKey = (RSAPublicKey) keyPair.getPublic();
+			RSAPrivateKey privateKey = (RSAPrivateKey) keyPair.getPrivate();
+			RSAKey rsaKey = new RSAKey.Builder(publicKey)
+					.privateKey(privateKey)
+					.keyID(UUID.randomUUID().toString())
+					.build();
+			JWKSet jwkSet = new JWKSet(rsaKey);
+			return new ImmutableJWKSet<>(jwkSet);
+		}
 	}
 
 	private static KeyPair generateRsaKey() {
@@ -199,15 +227,15 @@ public class SecurityConfig {
 	}
 
 	@Bean
-	public OAuth2TokenCustomizer<JwtEncodingContext> jwtTokenCustomizer() { 
+	public OAuth2TokenCustomizer<JwtEncodingContext> jwtTokenCustomizer() {
 		return (context) -> {
-			if (OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())) { 
-				context.getClaims().claims((claims) -> { 
+			if (OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())) {
+				context.getClaims().claims((claims) -> {
 					Set<String> roles = AuthorityUtils.authorityListToSet(context.getPrincipal().getAuthorities())
 							.stream()
 							.map(c -> c.replaceFirst("^ROLE_", ""))
-							.collect(Collectors.collectingAndThen(Collectors.toSet(), Collections::unmodifiableSet)); 
-					claims.put("roles", roles); 
+							.collect(Collectors.collectingAndThen(Collectors.toSet(), Collections::unmodifiableSet));
+					claims.put("roles", roles);
 				});
 			}
 		};
