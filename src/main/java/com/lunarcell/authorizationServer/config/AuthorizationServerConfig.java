@@ -21,6 +21,7 @@ import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -68,7 +69,9 @@ import jakarta.servlet.http.HttpServletRequest;
 
 @Configuration
 @EnableWebSecurity
-public class SecurityConfig {
+public class AuthorizationServerConfig {
+
+	private static final String CUSTOM_CONSENT_PAGE_URI = "/oauth2/consent";
 
 	@Bean
 	public PasswordEncoder passwordEncoder() {
@@ -94,15 +97,17 @@ public class SecurityConfig {
 	// }
 
 	@Bean
-	@Order(1)
+	@Order(Ordered.HIGHEST_PRECEDENCE)
 	public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http)
 			throws Exception {
 
 		OAuth2AuthorizationServerConfiguration.applyDefaultSecurity(http);
 
 		http.getConfigurer(OAuth2AuthorizationServerConfigurer.class)
-				.oidc(Customizer.withDefaults()) // Enable OpenID Connect 1.0
-				.tokenEndpoint(tokenEndpoint ->
+			.authorizationEndpoint(authorizationEndpoint ->
+				authorizationEndpoint.consentPage(CUSTOM_CONSENT_PAGE_URI))
+			.oidc(Customizer.withDefaults()) // Enable OpenID Connect 1.0
+			.tokenEndpoint(tokenEndpoint ->
 				tokenEndpoint.accessTokenRequestConverter(new AuthenticationConverter() {
 					@Override
 					public Authentication convert(HttpServletRequest request) {
@@ -123,21 +128,6 @@ public class SecurityConfig {
 				// Accept access tokens for User Info and/or Client Registration
 				.oauth2ResourceServer((resourceServer) -> resourceServer
 						.jwt(Customizer.withDefaults()));
-
-		return http.build();
-	}
-
-	@Bean
-	@Order(2)
-	public SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http)
-			throws Exception {
-		http
-			.securityMatcher("/oauth2/**", "/login")
-				.authorizeHttpRequests((authorize) -> authorize
-						.anyRequest().authenticated())
-				// Form login handles the redirect to the login page from the
-				// authorization server filter chain
-				.formLogin(Customizer.withDefaults());
 
 		return http.build();
 	}
