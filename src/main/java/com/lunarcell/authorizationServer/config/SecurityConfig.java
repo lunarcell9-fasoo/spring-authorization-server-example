@@ -122,6 +122,7 @@ public class SecurityConfig {
 	public SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http)
 			throws Exception {
 		http
+			.securityMatcher("/oauth2/**", "/login")
 				.authorizeHttpRequests((authorize) -> authorize
 						.anyRequest().authenticated())
 				// Form login handles the redirect to the login page from the
