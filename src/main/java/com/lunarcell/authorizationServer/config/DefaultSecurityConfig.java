@@ -17,12 +17,16 @@ package com.lunarcell.authorizationServer.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
 import org.springframework.security.core.session.SessionRegistry;
 import org.springframework.security.core.session.SessionRegistryImpl;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.session.HttpSessionEventPublisher;
+
+import static org.springframework.security.config.Customizer.withDefaults;
 
 /**
  * @author Joe Grandja
@@ -33,14 +37,14 @@ import org.springframework.security.web.session.HttpSessionEventPublisher;
 @Configuration(proxyBeanMethods = false)
 public class DefaultSecurityConfig {
 
-	// @formatter:off
+	@Bean
+	public WebSecurityCustomizer webSecurityCustomizer() {
+		return (web) -> web.ignoring().requestMatchers("/webjars/**", "/assets/**");
+	}
+
 	@Bean
 	public SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http) throws Exception {
 		http
-			.authorizeHttpRequests(authorize ->
-				authorize
-					.requestMatchers("/assets/**", "/webjars/**", "/login").permitAll()
-			)
 			.securityMatcher("/oauth2/**", "/login")
 				.authorizeHttpRequests((authorize) -> authorize
 					.requestMatchers("/login").permitAll()
@@ -49,7 +53,9 @@ public class DefaultSecurityConfig {
 			.formLogin(formLogin ->
 				formLogin
 					.loginPage("/login")
-			);
+			)
+			.cors(Customizer.withDefaults());
+			//.oauth2Client(withDefaults());
 
 		return http.build();
 	}

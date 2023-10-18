@@ -56,6 +56,9 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationConverter;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import com.lunarcell.authorizationServer.authentication.FsUserDetailsService;
 import com.nimbusds.jose.jwk.JWKSet;
@@ -97,6 +100,18 @@ public class AuthorizationServerConfig {
 	// }
 
 	@Bean
+	public CorsConfigurationSource corsConfigurationSource() {
+		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+		CorsConfiguration config = new CorsConfiguration();
+		config.addAllowedHeader("*");
+		config.addAllowedMethod("*");
+		config.addAllowedOrigin("http://127.0.0.1:9000");
+		config.setAllowCredentials(true);
+		source.registerCorsConfiguration("/**", config);
+		return source;
+	}
+
+	@Bean
 	@Order(Ordered.HIGHEST_PRECEDENCE)
 	public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http)
 			throws Exception {
@@ -117,17 +132,19 @@ public class AuthorizationServerConfig {
 						return null;
 					}
 				})
-		);
+			);
+		
 		http
-				// Redirect to the login page when not authenticated from the
-				// authorization endpoint
-				.exceptionHandling((exceptions) -> exceptions
-						.defaultAuthenticationEntryPointFor(
-								new LoginUrlAuthenticationEntryPoint("/login"),
-								new MediaTypeRequestMatcher(MediaType.TEXT_HTML)))
-				// Accept access tokens for User Info and/or Client Registration
-				.oauth2ResourceServer((resourceServer) -> resourceServer
-						.jwt(Customizer.withDefaults()));
+			// Redirect to the login page when not authenticated from the
+			// authorization endpoint
+			.exceptionHandling((exceptions) -> exceptions
+					.defaultAuthenticationEntryPointFor(
+							new LoginUrlAuthenticationEntryPoint("/login"),
+							new MediaTypeRequestMatcher(MediaType.TEXT_HTML)))
+			// Accept access tokens for User Info and/or Client Registration
+			.oauth2ResourceServer((resourceServer) -> resourceServer
+					.jwt(Customizer.withDefaults()))
+			.cors(Customizer.withDefaults());
 
 		return http.build();
 	}
@@ -150,9 +167,9 @@ public class AuthorizationServerConfig {
 				.authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
 				.authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
 				.authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
-				.redirectUri("http://127.0.0.1:8080/login/oauth2/code/fasoo-client")
+				.redirectUri("http://127.0.0.1:9000/login/oauth2/code/fasoo-client")
 				.redirectUri("https://oauth.pstmn.io/v1/callback")
-				.postLogoutRedirectUri("http://127.0.0.1:8080/")
+				.postLogoutRedirectUri("http://127.0.0.1:9000/")
 				.scope(OidcScopes.OPENID)
 				.scope(OidcScopes.PROFILE)
 				.scope("message.read")
@@ -163,6 +180,26 @@ public class AuthorizationServerConfig {
 				.build();
 
 		registeredClientRepository.save(registeredClient);
+
+
+		RegisteredClient publicClient = RegisteredClient.withId("1b898ded-d0ff-4fcb-bede-a72cfe94bcde")
+				.clientId("public-client")
+				.clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
+				.authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+				.redirectUri("http://127.0.0.1:9000/login/oauth2/code/public-client")
+				.redirectUri("https://oauth.pstmn.io/v1/callback")
+				.scope(OidcScopes.OPENID)
+				.scope(OidcScopes.PROFILE)
+				.scope("message.read")
+				.scope("message.write")
+				.clientSettings(ClientSettings.builder()
+					.requireAuthorizationConsent(true)
+					.requireProofKey(true)
+					.build()
+				)
+				.build();
+
+		registeredClientRepository.save(publicClient);
 
 		return registeredClientRepository;
 	}
